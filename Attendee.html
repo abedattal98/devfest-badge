@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevFest Badge Generator</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Roboto font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+        font-family: 'Google Sans', Arial, sans-serif;
+        }
+        /* Style for the file input */
+        input[type="file"]::file-selector-button {
+            @apply bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-600 transition-colors;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 md:p-10">
+            
+            <!-- Controls Column -->
+                <div class="flex flex-col gap-6 order-2 md:order-1">                
+                    <h1 class="text-3xl font-bold text-gray-800 order-2 md:order-1">Customize Your Badge</h1>
+                    <p class="text-gray-600 order-3 md:order-2">
+                        Fill in your details and upload a photo.
+                </p>
+
+                <div class="space-y-4 order-4 md:order-3">
+                        <div>
+                        <label for="photoUpload" class="block text-sm font-medium text-gray-700 mb-1">Upload Your Photo</label>
+                        <input type="file" id="photoUpload" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:border-0">
+                        <p id="dragHint" class="text-sm p-2 bg-blue-100 text-blue-800 font-medium rounded-md mt-2 hidden">
+                            Click and drag your photo in the preview to reposition it.
+                        </p>
+                    </div>
+                    <div>
+                        <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
+                        <input type="text" id="firstName" placeholder="First_Name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 font-medium rounded-md text-sm shadow-sm placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="lastName" class="block text-sm font-medium text-gray-700">LAST NAME</label>
+                        <input type="text" id="lastName" placeholder="LAST_NAME" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-gray-700">Title (Optional)</label>
+                        <input type="text" id="title" placeholder="Title" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="company" class="block text-sm font-medium text-gray-700">Company (Optional)</label>
+                        <input type="text" id="company" placeholder="Company" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700">X/SM @username (Optional)</label>
+                        <input type="text" id="username" placeholder="@username" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    </div>
+                </div>
+                
+                <button id="downloadButton" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-colors shadow-lg order-1 md:order-4">
+                    Download Your Badge
+                </button>
+            </div>
+
+            <!-- Preview Column -->
+            <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-center order-1 md:order-2">
+                    <canvas id="badgeCanvas" width="1080" height="1080" class="w-full max-w-md md:max-w-full aspect-square rounded-lg shadow-inner"></canvas>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module">
+         // --- NEW CODE TO FIX SAFARI FONT ISSUE ---
+        try {
+            // Wait for the specific fonts and weights we use to be ready
+            // This must happen BEFORE any canvas drawing.
+
+            await document.fonts.load('300 42px "Google Sans"'); // semibold
+            await document.fonts.load('bold 32px Roboto, "Google Sans"'); // For Title and Username
+            await document.fonts.load('bold 32px Roboto, "Google Sans"'); // For Company
+
+            
+            // Add any other weights if you plan to use them
+            // await document.fonts.load('500 1em "Google Sans"');
+            // await document.fonts.load('700 1em "Google Sans"');
+            
+            console.log('Fonts are loaded and ready for canvas.');
+        } catch (err) {
+            console.error('Error loading fonts. Canvas may use fallback.', err);
+        }
+        // --- END OF NEW CODE ---
+        const canvas = document.getElementById('badgeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- Get all input elements ---
+        const photoUpload = document.getElementById('photoUpload');
+        const firstNameInput = document.getElementById('firstName');
+        const lastNameInput = document.getElementById('lastName');
+        const titleInput = document.getElementById('title');
+        const companyInput = document.getElementById('company');
+        const usernameInput = document.getElementById('username');
+        const downloadButton = document.getElementById('downloadButton');
+
+        // --- Image objects ---
+        const templateImage = new Image();
+        const userPhoto = new Image();
+        userPhoto.crossOrigin = "anonymous"; // Handle potential CORS issues if any
+
+        // --- Define the phone cutout area ---
+        const targetRect = {
+            x: 590,
+            y: 260,
+            width: 450,
+            height: 620
+        };
+
+        // --- Store image position state ---
+        const imageState = {
+            x: 0,
+            y: 0,
+            drawWidth: 0,
+            drawHeight: 0
+        };
+        let isDragging = false;
+        let lastDragPos = { x: 0, y: 0 };
+
+
+        // --- Store text data ---
+        const textData = {
+            firstName: "First_Name",
+            lastName: "LAST_NAME",
+            title: "", // Start as empty
+            company: "", // Start as empty
+            username: "", // Start as empty
+        };
+
+        // --- Main function to draw everything on the canvas ---
+        function drawCanvas() {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. Draw the user's photo
+            // We draw it first, in the position of the phone cutout.
+            // The template image will be drawn over it, and its transparency
+            // will act as a mask.
+            if (userPhoto.src) {
+                // Save the current context state
+                ctx.save();
+                // Create a clipping path for the phone cutout area
+                ctx.beginPath();
+                ctx.rect(targetRect.x, targetRect.y, targetRect.width, targetRect.height);
+                ctx.clip(); // Everything drawn after this will be clipped to this rectangle
+
+                // Draw the user photo using its current state
+                ctx.drawImage(userPhoto, imageState.x, imageState.y, imageState.drawWidth, imageState.drawHeight);
+
+                // Restore the context state, removing the clipping path
+                ctx.restore();
+            }
+
+            // 2. Draw the template image on top
+            ctx.drawImage(templateImage, 0, 0, canvas.width, canvas.height);
+
+            // 3. Draw the text
+            // Set styles for Name
+            ctx.fillStyle = '#757577'; // Dark gray for names too
+ctx.font = '300 42px "Google Sans"';            ctx.fillText(textData.firstName, 80, 510);
+            ctx.fillText(textData.lastName, 80, 580);
+
+            // Set styles for Optional Info
+            ctx.fillStyle = '#757577'; // Medium gray
+            ctx.font = '32px Roboto, "Google Sans"';
+            ctx.fillText(textData.title, 80, 650);
+            ctx.font = 'bold 32px Roboto, "Google Sans"';
+            ctx.fillText(textData.company, 80, 700);
+            ctx.font = '32px Roboto, "Google Sans"';
+            ctx.fillText(textData.username, 80, 800);
+        }
+
+        // --- Event Listeners ---
+
+        // Load the template image
+        // THIS IS THE CRITICAL PART:
+        // 'Attendee.png' MUST be in the same folder as this HTML file.
+        templateImage.src = 'Attendee.png';
+        templateImage.onload = () => {
+            drawCanvas(); // Draw initial state when template loads
+        };
+        templateImage.onerror = () => {
+            ctx.fillStyle = 'red';
+            ctx.font = '20px Google Sans, Roboto';
+            ctx.fillText("Error: Could not load template image.", 10, 30);
+            ctx.fillText("Make sure 'Attendee.png'", 10, 60);
+            ctx.fillText("is in the same folder as this HTML file.", 10, 90);
+        };
+
+        // Handle user photo upload
+        photoUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    userPhoto.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Redraw canvas when user photo is loaded
+        userPhoto.onload = () => {
+            // Calculate initial "cover" state
+            const imgAspectRatio = userPhoto.width / userPhoto.height;
+            const targetAspectRatio = targetRect.width / targetRect.height;
+
+            let drawWidth, drawHeight, offsetX, offsetY;
+
+            if (imgAspectRatio > targetAspectRatio) {
+                // Image is wider than target area, fit height, crop width
+                drawHeight = targetRect.height;
+                drawWidth = drawHeight * imgAspectRatio;
+                offsetX = targetRect.x + (targetRect.width - drawWidth) / 2; // Center horizontally
+                offsetY = targetRect.y;
+            } else {
+                // Image is taller than or equal to target area, fit width, crop height
+                drawWidth = targetRect.width;
+                drawHeight = drawWidth / imgAspectRatio;
+                offsetX = targetRect.x;
+                offsetY = targetRect.y + (targetRect.height - drawHeight) / 2; // Center vertically
+            }
+
+            // Store this initial state
+            imageState.x = offsetX;
+            imageState.y = offsetY;
+            imageState.drawWidth = drawWidth;
+            imageState.drawHeight = drawHeight;
+
+            drawCanvas();
+
+            // Show the drag hint permanently
+            const dragHint = document.getElementById('dragHint');
+            if (dragHint) {
+                dragHint.classList.remove('hidden');
+            }
+        };
+        
+        // Handle text input changes
+        firstNameInput.addEventListener('input', (e) => {
+            textData.firstName = e.target.value || "First_Name";
+            drawCanvas();
+        });
+        lastNameInput.addEventListener('input', (e) => {
+            textData.lastName = e.target.value || "LAST_NAME";
+            drawCanvas();
+        });
+        titleInput.addEventListener('input', (e) => {
+            textData.title = e.target.value;
+            drawCanvas();
+        });
+        companyInput.addEventListener('input', (e) => {
+            textData.company = e.target.value;
+            drawCanvas();
+        });
+        usernameInput.addEventListener('input', (e) => {
+            textData.username = e.target.value ? `${e.target.value}` : "";
+            drawCanvas();
+        });
+
+        // Handle download button click
+        downloadButton.addEventListener('click', () => {
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'my-devfest-badge.png';
+            link.click();
+        });
+
+        // --- Drag-to-pan Image Logic ---
+
+        function getEventPos(canvas, evt) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const clientX = evt.clientX || (evt.touches && evt.touches[0].clientX);
+            const clientY = evt.clientY || (evt.touches && evt.touches[0].clientY);
+
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function getClientPos(evt) {
+             return {
+                x: evt.clientX || (evt.touches && evt.touches[0].clientX),
+                y: evt.clientY || (evt.touches && evt.touches[0].clientY)
+             };
+        }
+
+        function onDragStart(e) {
+            if (!userPhoto.src) return;
+            const pos = getEventPos(canvas, e);
+            
+            // Check if click is inside the target rectangle
+            if (pos.x >= targetRect.x && pos.x <= targetRect.x + targetRect.width &&
+                pos.y >= targetRect.y && pos.y <= targetRect.y + targetRect.height) {
+                
+                isDragging = true;
+                lastDragPos = getClientPos(e);
+                canvas.style.cursor = 'grabbing';
+                if (e.preventDefault) e.preventDefault();
+            }
+        }
+
+        function onDragMove(e) {
+            const pos = getEventPos(canvas, e);
+
+            // Update cursor to 'grab' when hovering over the photo
+            if (pos.x >= targetRect.x && pos.x <= targetRect.x + targetRect.width &&
+                pos.y >= targetRect.y && pos.y <= targetRect.y + targetRect.height) {
+                if (!isDragging) {
+                    canvas.style.cursor = 'grab';
+                }
+            } else {
+                if (!isDragging) {
+                    canvas.style.cursor = 'default';
+                }
+            }
+
+            if (!isDragging) return;
+            if (e.preventDefault) e.preventDefault();
+
+            const clientPos = getClientPos(e);
+            const dx = clientPos.x - lastDragPos.x;
+            const dy = clientPos.y - lastDragPos.y;
+
+            // Apply movement
+            let newX = imageState.x + dx;
+            let newY = imageState.y + dy;
+
+            // Clamp movement
+            newX = Math.min(targetRect.x, newX); // Clamp left
+            newX = Math.max(targetRect.x + targetRect.width - imageState.drawWidth, newX); // Clamp right
+            newY = Math.min(targetRect.y, newY); // Clamp top
+            newY = Math.max(targetRect.y + targetRect.height - imageState.drawHeight, newY); // Clamp bottom
+
+            imageState.x = newX;
+            imageState.y = newY;
+
+            lastDragPos = clientPos;
+            drawCanvas();
+        }
+
+        function onDragEnd() {
+            isDragging = false;
+            canvas.style.cursor = 'grab'; // Reset to 'grab' if still hovering
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', onDragStart);
+        canvas.addEventListener('mousemove', onDragMove);
+        canvas.addEventListener('mouseup', onDragEnd);
+        canvas.addEventListener('mouseleave', () => {
+            if (isDragging) {
+                onDragEnd();
+            }
+            canvas.style.cursor = 'default'; // Reset to default
+        });
+
+        // Touch events
+        canvas.addEventListener('touchstart', onDragStart, { passive: false });
+        canvas.addEventListener('touchmove', onDragMove, { passive: false });
+        canvas.addEventListener('touchend', onDragEnd);
+        canvas.addEventListener('touchcancel', onDragEnd);
+
+    </script>
+</body>
+</html>
